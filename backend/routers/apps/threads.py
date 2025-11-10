@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, UploadFile, File
 from sqlmodel import Session, select, and_, update
 from dependencies.auth_dependencies import get_current_user_dependency
 from db.database import get_session
 from db.models import (User, Thread, ThreadStatus, ThreadTask, ThreadMessage, ThreadChatType, ThreadChatFromChoices,
-                       ThreadTaskStatus, ThreadTaskPlan, ThreadTaskPlanStatus, PlanSubtask, SubtaskStatus)
+                       ThreadTaskStatus, ThreadTaskPlan, ThreadTaskPlanStatus, PlanSubtask, SubtaskStatus, ThreadTaskMemoryEntry)
 from schemas.threads import ListThread, CreateThread, UpdateThread, ListThreadMessage, RetrieveThread, SendMessageObj
 from typing import List
 from utils.procedures import CustomError, extract_json
@@ -12,7 +12,9 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage
 from utils import ai_prompts, llm_provider
 import json
+import os
 
+PRIVATE_MODE = os.getenv('PRIVATE_MODE', 'false').lower() == 'true'
 
 router = APIRouter(
     prefix='/apps/threads',
@@ -370,3 +372,50 @@ def send_message(tid: str, obj: SendMessageObj, db: Session = Depends(get_sessio
         db.refresh(ai_message)
 
         return response_data
+
+
+@router.post('/{tid}/upload_file')
+def upload_file_to_memory(tid: str, upload: UploadFile = File(...), db: Session = Depends(get_session), user: User = Depends(get_current_user_dependency)):
+    instance = db.exec(select(Thread).where(and_(
+        Thread.id == tid,
+        Thread.user_id == user.id,
+        Thread.status != ThreadStatus.DELETED
+    ))).first()
+    if not instance:
+        raise CustomError(status.HTTP_404_NOT_FOUND, 'Thread not found')
+
+    task = db.exec(select(ThreadTask).where(and_(
+        ThreadTask.thread_id == tid,
+        ThreadTask.status == ThreadTaskStatus.WORKING,
+    ))).first()
+
+    # En modo privado permitimos subir aunque no haya tarea activa; creamos una dummy si falta
+    if not task and PRIVATE_MODE:
+        task = ThreadTask(
+            thread_id=instance.id,
+            task_text='(private-mode dummy task for uploads)',
+            needs_memory_from_previous_tasks=False,
+            background_mode=False,
+            extended_thinking_mode=False,
+        )
+        db.add(task)
+        db.commit()
+        db.refresh(task)
+        # Asegurar estado WORKING para cumplir lógica existente
+        instance.status = ThreadStatus.WORKING
+        db.add(instance)
+        db.commit()
+        db.refresh(instance)
+
+    if not task:
+        raise CustomError(status.HTTP_400_BAD_REQUEST, 'No active task to attach memory')
+
+    content = (upload.file.read()).decode(errors='ignore') if upload.content_type.startswith('text') else ''
+    if not content:
+        content = f'Uploaded filename: {upload.filename}, content_type: {upload.content_type} (binary not indexed)'
+
+    memory_entry = ThreadTaskMemoryEntry(thread_task_id=task.id, text=f'FILE:{upload.filename}\n{content[:5000]}')
+    db.add(memory_entry)
+    db.commit()
+    db.refresh(memory_entry)
+    return {'message': 'File stored in memory', 'memory_entry_id': memory_entry.id, 'private_mode_dummy': PRIVATE_MODE}

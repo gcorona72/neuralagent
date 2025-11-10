@@ -7,6 +7,7 @@ from routers.aiagent.generic import router as aiagent_router
 from routers.apps.threads import router as threads_router
 from routers.aiagent.suggestor import router as suggestor_aiagent_router
 from routers.aiagent.background import router as bg_mode_aiagent_router
+from routers.apps.voice import router as voice_router
 from utils.procedures import CustomError
 
 from dotenv import load_dotenv
@@ -40,6 +41,7 @@ app.include_router(threads_router)
 app.include_router(suggestor_aiagent_router)
 app.include_router(bg_mode_aiagent_router)
 app.include_router(aiagent_router)
+app.include_router(voice_router)
 
 # @app.on_event('startup')
 # async def startup():

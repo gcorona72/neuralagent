@@ -23,6 +23,8 @@ import { Text } from '../../components/Elements/Typography';
 
 export default function Sidebar() {
 
+  const isPrivateMode = process.env.REACT_APP_PRIVATE_MODE === 'true';
+
   const [threads, setThreads] = useState([]);
 
   const isLoading = useSelector(state => state.isLoading);
@@ -33,6 +35,13 @@ export default function Sidebar() {
   const dispatch = useDispatch();
 
   const getThreads = () => {
+    if (isPrivateMode) {
+      // En modo privado podríamos tener un endpoint libre; si no, mostrar lista vacía sin error
+      axios.get('/threads', {}).then((response) => {
+        setThreads(response.data);
+      }).catch(() => {});
+      return;
+    }
     dispatch(setLoadingDialog(true));
     axios.get('/threads', {
       headers: {

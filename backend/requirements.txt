@@ -31,3 +31,4 @@ broadcaster
 broadcaster[redis]
 asyncio-redis
 requests
+faster-whisper

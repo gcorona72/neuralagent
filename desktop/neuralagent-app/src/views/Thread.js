@@ -9,7 +9,7 @@ import { FlexSpacer } from '../components/Elements/SmallElements';
 import NATextArea from '../components/Elements/TextAreas';
 import { IconButton } from '../components/Elements/Button';
 import { MdEdit, MdDelete } from 'react-icons/md';
-import { FaArrowAltCircleUp, FaStopCircle } from 'react-icons/fa';
+import { FaArrowAltCircleUp, FaStopCircle, FaMicrophone, FaPaperclip } from 'react-icons/fa';
 import ClipLoader from 'react-spinners/ClipLoader';
 import { Text } from '../components/Elements/Typography';
 import ThreadDialog from '../components/DataDialogs/ThreadDialog';
@@ -17,6 +17,8 @@ import YesNoDialog from '../components/Elements/YesNoDialog';
 import { useNavigate } from 'react-router-dom';
 import { MdOutlineSchedule } from 'react-icons/md';
 import { GiBrain } from 'react-icons/gi';
+import voice from '../services/voice';
+import audioRecorder from '../services/audioRecorder';
 
 import styled from 'styled-components';
 
@@ -82,6 +84,10 @@ export default function Thread() {
   const [isSendingMessage, setSendingMessage] = useState(false);
   const [backgroundMode, setBackgroundMode] = useState(false);
   const [thinkingMode, setThinkingMode] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [autoSendVoice, setAutoSendVoice] = useState(false);
+  const [useWhisper, setUseWhisper] = useState(false);
+  const voiceSilenceMs = 2500; // silencio para auto envío
 
   const [isThreadDialogOpen, setThreadDialogOpen] = useState(false);
   const [isDeleteThreadDialogOpen, setDeleteThreadDialogOpen] = useState(false);
@@ -91,6 +97,9 @@ export default function Thread() {
   const { tid } = useParams();
 
   const bottomRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const silenceTimerRef = useRef(null);
 
   const navigate = useNavigate();
 
@@ -250,6 +259,113 @@ export default function Thread() {
     setBackgroundMode(value);
   };
 
+  const resetSilenceTimer = () => {
+    if (!autoSendVoice) return;
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    silenceTimerRef.current = setTimeout(() => {
+      if (autoSendVoice && messageText.trim().length > 0 && !isSendingMessage) {
+        sendMessage();
+        stopVoice();
+      }
+    }, voiceSilenceMs);
+  };
+
+  const startVoice = () => {
+    if (useWhisper) {
+      try {
+        const rec = audioRecorder.startRecording();
+        rec.onStop(async (blob) => {
+          setIsRecording(false);
+          if (blob.size === 0) return;
+          dispatch(setLoadingDialog(true));
+          const formData = new FormData();
+          formData.append('audio', blob, 'grabacion.webm');
+          try {
+            const response = await axios.post('/voice/transcribe', formData, {
+              headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'multipart/form-data' }
+            });
+            setMessageText(response.data.text);
+            dispatch(setLoadingDialog(false));
+            if (autoSendVoice && response.data.text.trim().length > 0) {
+              sendMessage();
+            }
+          } catch (e) {
+            dispatch(setLoadingDialog(false));
+            dispatch(setError(true, 'Error transcribiendo audio.'));
+            setTimeout(() => dispatch(setError(false, '')), 2500);
+          }
+        });
+        rec.onError(() => { setIsRecording(false); });
+        rec.promise.then(() => setIsRecording(true));
+        recognitionRef.current = rec; // reutilizamos ref para stop
+      } catch (e) {
+        dispatch(setError(true, 'No se pudo iniciar grabación.'));
+        setTimeout(() => dispatch(setError(false, '')), 2500);
+      }
+      return;
+    }
+    // Web Speech path
+    if (!voice.isSupported()) {
+      dispatch(setError(true, 'Voz no soportada por este navegador.'));
+      setTimeout(() => dispatch(setError(false, '')), 2500);
+      return;
+    }
+    try {
+      const lang = process.env.REACT_APP_VOICE_LANG || 'es-ES';
+      const ctrl = voice.start({
+        lang,
+        onInterim: (txt) => { setMessageText(txt); resetSilenceTimer(); },
+        onFinal: (txt) => { setMessageText((prev) => prev.trim().length === 0 ? txt : (prev + ' ' + txt)); resetSilenceTimer(); },
+        onEnd: () => { setIsRecording(false); if (autoSendVoice && messageText.trim().length > 0) sendMessage(); },
+        onError: () => setIsRecording(false),
+      });
+      recognitionRef.current = ctrl;
+      setIsRecording(true);
+      resetSilenceTimer();
+    } catch (e) {
+      setIsRecording(false);
+    }
+  };
+
+  const stopVoice = () => {
+    if (silenceTimerRef.current) { clearTimeout(silenceTimerRef.current); silenceTimerRef.current = null; }
+    if (recognitionRef.current) {
+      if (useWhisper) {
+        recognitionRef.current.stop();
+      } else {
+        recognitionRef.current.stop();
+      }
+      recognitionRef.current = null;
+    } else {
+      voice.stop();
+    }
+    setIsRecording(false);
+  };
+
+  const onAttachClick = () => fileInputRef.current?.click();
+
+  const onFileSelected = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      dispatch(setLoadingDialog(true));
+      const formData = new FormData();
+      formData.append('upload', file);
+      await axios.post(`/threads/${tid}/upload_file`, formData, {
+        headers: { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'multipart/form-data' },
+      });
+      dispatch(setLoadingDialog(false));
+      dispatch(setError(true, 'Archivo agregado a la memoria del task.'));
+      setTimeout(() => dispatch(setError(false, '')), 2000);
+    } catch (err) {
+      dispatch(setLoadingDialog(false));
+      dispatch(setError(true, 'No se pudo subir el archivo.'));
+      setTimeout(() => dispatch(setError(false, '')), 2500);
+    } finally {
+      e.target.value = '';
+    }
+  };
+
   useEffect(() => {
     getThread();
     getThreadMessages();
@@ -342,6 +458,7 @@ export default function Thread() {
               onKeyDown={handleTextEnterKey}
               onChange={(e) => setMessageText(e.target.value)}
             />
+            <input ref={fileInputRef} type='file' style={{ display: 'none' }} onChange={onFileSelected} />
             <div style={{ marginTop: '5px', display: 'flex', alignItems: 'center' }}>
               <ToggleContainer>
                 <ModeToggle
@@ -362,6 +479,26 @@ export default function Thread() {
                   Thinking
                 </ModeToggle>
               </ToggleContainer>
+              <div style={{width: '10px'}} />
+              <ToggleContainer>
+                <ModeToggle active={autoSendVoice} onClick={() => setAutoSendVoice(!autoSendVoice)}>
+                  Auto-Send
+                </ModeToggle>
+              </ToggleContainer>
+              <div style={{width: '10px'}} />
+              <ToggleContainer>
+                <ModeToggle active={useWhisper} onClick={() => setUseWhisper(!useWhisper)}>
+                  Whisper
+                </ModeToggle>
+              </ToggleContainer>
+              <div style={{width: '10px'}} />
+              <IconButton iconSize='24px' color='#fff' style={{ margin: '0 5px' }} dark onClick={onAttachClick}>
+                <FaPaperclip />
+              </IconButton>
+              <div style={{width: '5px'}} />
+              <IconButton iconSize='24px' color={isRecording ? '#ff5b5b' : '#fff'} style={{ margin: '0 5px' }} dark onClick={() => (isRecording ? stopVoice() : startVoice())}>
+                <FaMicrophone />
+              </IconButton>
               <FlexSpacer />
               {isSendingMessage ? (
                 <ClipLoader color={'#fff'} size={40} />
