@@ -22,16 +22,15 @@ def generate_ver_token():
 
 
 def generate_user_id():
-    return 'na_usr_' + generate_random_string(20)
+    return 'user_' + generate_random_string(16)
 
 
 def generate_thread_id():
-    return generate_random_string(20)
+    return 'thread_' + generate_random_string(16)
 
 
-def generate_random_number(size=6):
-    number = ''.join(["{}".format(random.randint(0, 9)) for num in range(0, size)])
-    return number
+def generate_random_number():
+    return str(random.randint(100000, 999999))
 
 
 def generate_api_key():

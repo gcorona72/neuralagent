@@ -59,8 +59,8 @@ function ThreadDialog({ isOpen, setOpen, threadObj=null, onSuccess }) {
       }
     }).catch((error) => {
       dispatch(setLoadingDialog(false));
-      if (error.response.status === constants.status.BAD_REQUEST) {
-        dispatch(setError(true, getBadRequestErrorMessage(error.response.data)));
+      if (error?.response?.status === constants.status.BAD_REQUEST) {
+        dispatch(setError(true, getBadRequestErrorMessage(error.response?.data)));
       } else {
         dispatch(setError(true, constants.GENERAL_ERROR));
       }

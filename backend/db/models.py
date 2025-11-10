@@ -31,6 +31,7 @@ class User(SQLModel, table=True):
 
     login_sessions: List['LoginSession'] = Relationship(back_populates='user')
     threads: List['Thread'] = Relationship(back_populates='user')
+    interaction_contexts: List['InteractionContext'] = Relationship(back_populates='user')
 
 
 class LoginSessionTypes(str, Enum):
@@ -86,6 +87,7 @@ class Thread(SQLModel, table=True):
     title: str = Field(nullable=False)
     user_id: str = Field(foreign_key='users.id')
     status: Optional[str] = Field(nullable=False, default=ThreadStatus.STANDBY)
+    current_task: Optional[str] = Field(default=None, sa_column=Column(Text, nullable=True))
 
     created_at: Optional[datetime.datetime] = Field(default_factory=datetime.datetime.now)
     updated_at: Optional[datetime.datetime] = Field(default_factory=datetime.datetime.now,
@@ -228,3 +230,14 @@ class ThreadMessage(SQLModel, table=True):
     thread: Optional['Thread'] = Relationship(back_populates='thread_messages')
     thread_task: Optional['ThreadTask'] = Relationship(back_populates='thread_task_messages')
     plan_subtask: Optional['PlanSubtask'] = Relationship(back_populates='plan_subtask_messages')
+
+
+class InteractionContext(SQLModel, table=True):
+    __tablename__ = 'interaction_contexts'
+
+    id: Optional[int] = Field(primary_key=True, index=True, nullable=False)
+    user_id: Optional[str] = Field(foreign_key='users.id', nullable=True)
+    context_data: str = Field(default="", sa_column=Column(Text, nullable=False))
+    created_at: Optional[datetime.datetime] = Field(default_factory=datetime.datetime.now)
+
+    user: Optional[User] = Relationship(back_populates='interaction_contexts')

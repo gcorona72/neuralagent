@@ -59,7 +59,7 @@ function Login() {
       window.location.reload();
     }).catch((error) => {
       dispatch(setLoadingDialog(false));
-      if (error.response.status === constants.status.UNAUTHORIZED) {
+      if (error?.response?.status === constants.status.UNAUTHORIZED) {
         dispatch(setError(true, 'Incorrect Email or Password, Please try again.'));
       } else {
         dispatch(setError(true, constants.GENERAL_ERROR));

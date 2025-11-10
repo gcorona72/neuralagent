@@ -26,7 +26,7 @@ export const logoutUser = (accessToken, dispatch) => {
     })
     .catch((error) => {
       dispatch(setLoadingDialog(false));
-      if (error.response.status === constants.status.UNAUTHORIZED) {
+      if (error?.response?.status === constants.status.UNAUTHORIZED) {
         logoutUserLocally();
       }
     });
@@ -43,7 +43,7 @@ export const refreshToken = async () => {
     }
     window.location.reload();
   }).catch((error) => {
-    if (error.response.status === constants.status.UNAUTHORIZED) {
+    if (error?.response?.status === constants.status.UNAUTHORIZED) {
       logoutUserLocally();
     }
   });

@@ -114,7 +114,7 @@ export default function Thread() {
       dispatch(setLoadingDialog(false));
     }).catch(error => {
       dispatch(setLoadingDialog(false));
-      if (error.response?.status === constants.status.UNAUTHORIZED) {
+      if (error?.response?.status === constants.status.UNAUTHORIZED) {
         window.location.reload();
       }
     });
@@ -129,7 +129,7 @@ export default function Thread() {
       dispatch(setLoadingDialog(false));
     }).catch(error => {
       dispatch(setLoadingDialog(false));
-      if (error.response?.status === constants.status.UNAUTHORIZED) {
+      if (error?.response?.status === constants.status.UNAUTHORIZED) {
         window.location.reload();
       }
     });
@@ -174,8 +174,8 @@ export default function Thread() {
     }).catch((error) => {
       dispatch(setLoadingDialog(false));
       setSendingMessage(false);
-      if (error.response.status === constants.status.BAD_REQUEST) {
-        if (error.response.data?.message === 'Not_Browser_Task_BG_Mode') {
+      if (error?.response?.status === constants.status.BAD_REQUEST) {
+        if (error.response?.data?.message === 'Not_Browser_Task_BG_Mode') {
           dispatch(setError(true, 'Background Mode only supports browser tasks.'));
         } else {
           dispatch(setError(true, 'Something Wrong Happened, Please try again.'));
@@ -201,7 +201,7 @@ export default function Thread() {
       window.location.reload();
     }).catch((error) => {
       dispatch(setLoadingDialog(false));
-      if (error.response.status === constants.status.UNAUTHORIZED) {
+      if (error?.response?.status === constants.status.UNAUTHORIZED) {
         window.location.reload();
       } else {
         dispatch(setError(true, constants.GENERAL_ERROR));
@@ -230,7 +230,7 @@ export default function Thread() {
       getThread();
     }).catch((error) => {
       dispatch(setLoadingDialog(false));
-      if (error.response.status === constants.status.BAD_REQUEST) {
+      if (error?.response?.status === constants.status.BAD_REQUEST) {
         dispatch(setError(true, constants.GENERAL_ERROR));
       } else {
         dispatch(setError(true, constants.GENERAL_ERROR));

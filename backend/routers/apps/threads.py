@@ -11,6 +11,7 @@ from utils import ai_helpers
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage
 from utils import ai_prompts, llm_provider
+from utils.upload_helper import save_bytes_local, get_local_file_url
 import json
 import os
 
@@ -414,8 +415,24 @@ def upload_file_to_memory(tid: str, upload: UploadFile = File(...), db: Session 
     if not content:
         content = f'Uploaded filename: {upload.filename}, content_type: {upload.content_type} (binary not indexed)'
 
+    # Almacenamiento local en modo privado
+    local_file_rel = None
+    local_file_url = None
+    if PRIVATE_MODE:
+        upload.file.seek(0)
+        raw_bytes = upload.file.read()
+        ext = os.path.splitext(upload.filename)[1]
+        local_file_rel = save_bytes_local(raw_bytes, ext.lstrip('.'))
+        local_file_url = get_local_file_url(local_file_rel)
+
     memory_entry = ThreadTaskMemoryEntry(thread_task_id=task.id, text=f'FILE:{upload.filename}\n{content[:5000]}')
     db.add(memory_entry)
     db.commit()
     db.refresh(memory_entry)
-    return {'message': 'File stored in memory', 'memory_entry_id': memory_entry.id, 'private_mode_dummy': PRIVATE_MODE}
+    return {
+        'message': 'File stored in memory',
+        'memory_entry_id': memory_entry.id,
+        'private_mode_dummy': PRIVATE_MODE,
+        'local_file_rel': local_file_rel,
+        'local_file_url': local_file_url,
+    }

@@ -51,8 +51,7 @@ export default function Sidebar() {
       setThreads(response.data);
       dispatch(setLoadingDialog(false));
     }).catch((error) => {
-      dispatch(setLoadingDialog(false));
-      if (error.response.status === constants.status.UNAUTHORIZED) {
+      if (error?.response?.status === constants.status.UNAUTHORIZED) {
         window.location.reload();
       }
     });

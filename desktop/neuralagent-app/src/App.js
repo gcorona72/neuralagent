@@ -185,7 +185,7 @@ function App() {
       dispatch(setUser(response.data));
       dispatch(setAppLoading(false));
     }).catch((error) => {
-      if (error.response.status === constants.status.UNAUTHORIZED) {
+      if (error?.response?.status === constants.status.UNAUTHORIZED) {
         refreshToken();
       } else {
         dispatch(setAppLoading(false));
@@ -252,4 +252,3 @@ function App() {
 
 
 export default App;
-

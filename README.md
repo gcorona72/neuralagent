@@ -93,5 +93,58 @@ Solución de problemas
 - Modelos LLM: si falta configuración, algunas rutas fallarán. Completa .env del backend.
 - SQLite: si no tienes Postgres, el backend crea neuralagent.db en la carpeta backend.
 
+## LLM por defecto y fallback
+
+En modo `PRIVATE_MODE=true` o si faltan las variables de entorno de modelo, el backend usa un LLM local de respaldo (DummyLocalLLM) que:
+- Clasifica tareas básicas (inquiry vs desktop_task)
+- Genera títulos simples
+- Devuelve subtareas mínimas
+Esto permite usar la app sin claves externas.
+
+Para activar OpenAI por defecto copia `backend/.env.example` a `backend/.env` y ajusta:
+```
+OPENAI_API_KEY=tu_clave
+CLASSIFIER_AGENT_MODEL_TYPE=openai
+CLASSIFIER_AGENT_MODEL_ID=gpt-4o-mini
+TITLE_AGENT_MODEL_TYPE=openai
+TITLE_AGENT_MODEL_ID=gpt-4o-mini
+PLANNER_AGENT_MODEL_TYPE=openai
+PLANNER_AGENT_MODEL_ID=gpt-4o-mini
+SUGGESTOR_AGENT_MODEL_TYPE=openai
+SUGGESTOR_AGENT_MODEL_ID=gpt-4o-mini
+COMPUTER_USE_AGENT_MODEL_TYPE=openai
+COMPUTER_USE_AGENT_MODEL_ID=gpt-4o
+```
+Si prefieres Anthropic o Bedrock cambia el TYPE y el ID y define la clave correspondiente.
+
+## Script de desarrollo rápido
+
+Para arrancar/gestionar backend + Electron con un solo comando se añadió `scripts/dev.sh`.
+
+Dar permisos de ejecución una sola vez:
+```bash
+chmod +x scripts/dev.sh
+```
+
+Comandos:
+```bash
+scripts/dev.sh start    # Inicia backend (background) y luego Electron (foreground)
+scripts/dev.sh status   # Muestra procesos/puertos
+scripts/dev.sh stop     # Detiene backend, react y electron
+scripts/dev.sh restart  # stop + start
+```
+
+Variables opcionales (antes del start):
+```bash
+export BACKEND_PORT=8000
+export FRONT_PORT=6763
+```
+
+Si quieres sólo backend:
+```bash
+scripts/dev.sh stop
+uvicorn main:app --host 127.0.0.1 --port 8000 --reload
+```
+
 Licencia
 MIT

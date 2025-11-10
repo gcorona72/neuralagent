@@ -185,7 +185,7 @@ export default function Overlay() {
       setRunningThreadId(null);
     }).catch((error) => {
       setLoading(false);
-      if (error.response?.status === constants.status.UNAUTHORIZED) {
+      if (error?.response?.status === constants.status.UNAUTHORIZED) {
         window.location.reload();
       }
     });
@@ -225,7 +225,7 @@ export default function Overlay() {
       }
     }).catch((error) => {
       setLoading(false);
-      if (error.response?.status === constants.status.UNAUTHORIZED) {
+      if (error?.response?.status === constants.status.UNAUTHORIZED) {
         window.location.reload();
       }
     });

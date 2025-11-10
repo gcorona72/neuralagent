@@ -13,6 +13,8 @@ boto3
 botocore
 python-multipart
 pillow
+PyPDF2
+pytesseract
 langchain
 langchain-community
 langchain-core
